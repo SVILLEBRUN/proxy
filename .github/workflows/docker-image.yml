@@ -1,0 +1,29 @@
+name: Build Docker Images
+
+on:
+	push:
+		branches: [ "master" ]
+	pull_request:
+		branches: [ "master" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+		- uses: actions/checkout@v4
+
+		- name: Set up Docker Buildx
+			uses: docker/setup-buildx-action@v2
+
+		- name: login to docker hub
+			id: docker-hub
+			env:
+				username: ${{secrets.DOCKERHUB_USERNAME}}
+				password: ${{secrets.DOCKERHUB_PASSWORD}}
+			run: echo $password | docker login -u $username --password-stdin
+
+		- name: Build and push proxy image
+			run: docker buildx build ./ --platform linux/arm64 --file ./Dockerfile  --target production-stage  --tag sebvillebrun/proxy:latest --push
