@@ -11,28 +11,31 @@ router.get('/images', async (req, res) => {
     if (!imageUrl) {
         return res.status(400).json({ success: false, message: 'No image URL provided' });
     }
-    
-    try {
-        const imageStream = await needle('get', imageUrl);
 
-        if(process.env.NODE_ENV != 'production') {
+    try {
+        const imageResponse = await needle('get', imageUrl, { follow_max: 5 });
+
+        if (process.env.NODE_ENV !== 'production') {
             console.info('Image REQUEST : ', imageUrl);
         }
 
-        // Handling errors
-        imageStream.on('error', (err) => {
-            return res.status(500).json({ success: false, message: 'Error fetching the image', error: err.message });
-        });
+        // Check Content-Type to ensure it's an image
+        const contentType = imageResponse.headers['content-type'];
+        if (!contentType || !contentType.startsWith('image/')) {
+            return res.status(400).json({ success: false, message: 'The URL does not return an image' });
+        }
 
-        // Send the image stream to the client
-        imageStream.on('header', (headers) => {
-            if (headers['content-type']) {
-                res.setHeader('Content-Type', headers['content-type']);  // Set the content type of the response
-            }
-        });
+        // Set the Content-Type of the response
+        res.setHeader('Content-Type', contentType);
 
-        // Send the image stream to the client
-        imageStream.pipe(res);
+        // Optionally set the Content-Length if available
+        const contentLength = imageResponse.headers['content-length'];
+        if (contentLength) {
+            res.setHeader('Content-Length', contentLength);
+        }
+
+        // Send the raw response directly
+        res.send(imageResponse.raw);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error });
