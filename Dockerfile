@@ -1,21 +1,20 @@
-ARG NODE_VERSION=26
-
-FROM node:${NODE_VERSION}-alpine AS base
+FROM node:26-alpine AS base
+RUN npm install -g pnpm@12
 WORKDIR /app
 EXPOSE 5000
 
 FROM base AS development-stage
 ENV NODE_ENV=development
-COPY package*.json ./
-RUN npm ci --include=dev
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
 USER node
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
 
 FROM base AS production-stage
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm ci --omit=dev
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
 USER node
 COPY . .
-CMD ["npm", "run", "start"]
+CMD ["pnpm", "run", "start"]
